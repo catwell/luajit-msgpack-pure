@@ -84,11 +84,8 @@ for n=255,65535 do -- uint16
 end
 
  -- uint32
- printf(".")
+printf(".")
 for n=65536,65536+100 do
-  nb_test(n)
-end
-for n=65536+100,4294967295-100,10000 do
   nb_test(n)
 end
 for n=4294967295-100,4294967295 do
@@ -118,9 +115,6 @@ end
 -- int32
 printf(".")
 for n=-32769,-32769-100,-1 do
-  nb_test(n)
-end
-for n=-32769-100,-2147483648+100,-10000 do
   nb_test(n)
 end
 for n=-2147483648+100,-2147483648,-1 do
