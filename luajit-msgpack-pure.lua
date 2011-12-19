@@ -9,7 +9,19 @@ ffi.cdef[[
 ]]
 
 -- cache bitops
-local bor,band,rshift = bit.bor,bit.band,bit.rshift
+local bor,band,bxor,rshift = bit.bor,bit.band,bit.bxor,bit.rshift
+
+-- shared ffi data
+local t_buf = ffi.new("unsigned char[8]")
+local t_buf2 = ffi.new("unsigned char[8]")
+
+-- endianness
+
+local LITTLE_ENDIAN = ffi.abi("le")
+local rcopy = function(dst,src,len)
+  local n = len-1
+  for i=0,n do dst[i] = src[n-i] end
+end
 
 -- buffer
 
@@ -50,10 +62,19 @@ local sbuffer_append_tbl = function(self,t)
   self.size = self.size + len
 end
 
-local sbuffer_append_intx = function(self,n,x,h)
-  local t = {h}
-  for i=x-8,0,-8 do t[#t+1] = band(rshift(n,i),0xff) end
-  sbuffer_append_tbl(self,t)
+local sbuffer_append_intx
+if LITTLE_ENDIAN then
+  sbuffer_append_intx = function(self,n,x,h)
+    local t = {h}
+    for i=x-8,0,-8 do t[#t+1] = band(rshift(n,i),0xff) end
+    sbuffer_append_tbl(self,t)
+  end
+else
+  sbuffer_append_intx = function(self,n,x,h)
+    local t = {h}
+    for i=0,x-8,8 do t[#t+1] = band(rshift(n,i),0xff) end
+    sbuffer_append_tbl(self,t)
+  end
 end
 
 --- packers
@@ -104,16 +125,15 @@ packers.number = function(n)
       end
     end
   else -- floating point
-    local f = ffi.new("double[1]") -- TODO poss. to use floats instead
-    f[0] = n
-    local _b = ffi.cast("unsigned char *",f)
-    local b
-    if ffi.abi("le") then -- fix endianness
-      b = ffi.new("unsigned char[8]")
-      for i=0,7 do b[i] = _b[7-i] end
-    else b = _b end
+    -- TODO poss. to use floats instead
+    if LITTLE_ENDIAN then
+      ffi.cast("double *",t_buf2)[0] = n
+      rcopy(t_buf,t_buf2,8)
+    else
+      ffi.cast("double *",t_buf)[0] = n
+    end
     sbuffer_append_tbl(buffer,{0xcb})
-    sbuffer_append_str(buffer,b,8)
+    sbuffer_append_str(buffer,t_buf,8)
   end
 end
 
@@ -214,6 +234,12 @@ local type_for = function(n)
   else return "undefined" end
 end
 
+local types_len_map = {
+  uint16 = 2, uint32 = 4, uint64 = 8,
+  int16 = 2, int32 = 4, int64 = 8,
+}
+
+
 --- unpackers
 
 local unpackers = {}
@@ -227,21 +253,77 @@ end
 
 local fbcks = {l = {}} -- TODO remove when complete
 unpackers.dynamic = function(buf,offset)
-  local b0 = buf.data[offset]
-  local obj_type = type_for(b0)
+  if offset >= buf.size then return nil,nil end
+  local obj_type = type_for(buf.data[offset])
   if not unpackers[obj_type] then -- TODO remove when complete
     if not fbcks.l[obj_type] then
-      print(string.format("WARNING: fallback for type %s (%d)",obj_type,b0))
+      print(string.format(
+        "WARNING: fallback for type %s (%d)",obj_type,buf.data[offset]
+      ))
       fbcks.l[obj_type] = true
     end
     return up.unpack(ffi.string(buf.data,buf.size),offset)
   end
-  return unpackers[obj_type](buf.data,offset) -- offset,data
+  return unpackers[obj_type](buf,offset) -- offset,data
 end
 
 unpackers.undefined = function(buf,offset)
   error("unimplemented")
 end
+
+unpackers["nil"] = function(buf,offset)
+  return offset+1,nil
+end
+
+unpackers["false"] = function(buf,offset)
+  return offset+1,false
+end
+
+unpackers["true"] = function(buf,offset)
+  return offset+1,true
+end
+
+unpackers["fixnum_pos"] = function(buf,offset)
+  return offset+1,buf.data[offset]
+end
+
+unpackers["uint8"] = function(buf,offset)
+  return offset+2,buf.data[offset+1]
+end
+
+local unpacker_intx
+if LITTLE_ENDIAN then
+  unpacker_intx = function(buf,offset)
+    local obj_type = type_for(buf.data[offset])
+    local l = types_len_map[obj_type]
+    rcopy(t_buf,buf.data+offset+1,l)
+    return offset+l+1,tonumber(ffi.cast(obj_type .. "_t *",t_buf)[0])
+  end
+else
+  unpacker_intx = function(buf,offset)
+    local obj_type = type_for(buf.data[offset])
+    local l = types_len_map[obj_type]
+    return offset+l+1,tonumber(ffi.cast(obj_type .. "_t *",t_buf)[0])
+  end
+end
+
+unpackers["uint16"] = unpacker_intx
+unpackers["uint32"] = unpacker_intx
+unpackers["uint64"] = unpacker_intx
+
+unpackers["fixnum_neg"] = function(buf,offset)
+  -- alternative to cast below:
+  -- return offset+1,-band(bxor(buf.data[offset],0x1f),0x1f)-1
+  return offset+1,ffi.cast("int8_t *",buf.data)[offset]
+end
+
+unpackers["int8"] = function(buf,offset)
+  return offset+2,ffi.cast("int8_t *",buf.data+offset+1)[0]
+end
+
+unpackers["int16"] = unpacker_intx
+unpackers["int32"] = unpacker_intx
+unpackers["int64"] = unpacker_intx
 
 -- Main functions
 
