@@ -11,14 +11,16 @@ ffi.cdef[[
 -- cache bitops
 local bor,band,rshift = bit.bor,bit.band,bit.rshift
 
+-- buffer
+
 local MSGPACK_SBUFFER_INIT_SIZE = 8192
 
-local buffer = {} -- module buffer - change this?
+local buffer = {}
 
 local sbuffer_init = function(self)
   self.size = 0
   self.alloc = MSGPACK_SBUFFER_INIT_SIZE
-  self.data = ffi.cast("char *",ffi.C.malloc(MSGPACK_SBUFFER_INIT_SIZE))
+  self.data = ffi.cast("unsigned char *",ffi.C.malloc(MSGPACK_SBUFFER_INIT_SIZE))
 end
 
 local sbuffer_destroy = function(self)
@@ -29,7 +31,7 @@ local sbuffer_realloc = function(self,len)
   if self.alloc - self.size < len then
     local nsize = self.alloc * 2
     while nsize < self.alloc + len do nsize = nsize * 2 end
-    self.data = ffi.cast("char *",ffi.C.realloc(self.data,nsize))
+    self.data = ffi.cast("unsigned char *",ffi.C.realloc(self.data,nsize))
     self.alloc = nsize
   end
 end
@@ -104,10 +106,10 @@ packers.number = function(n)
   else -- floating point
     local f = ffi.new("double[1]") -- TODO poss. to use floats instead
     f[0] = n
-    local _b = ffi.cast("char *",f)
+    local _b = ffi.cast("unsigned char *",f)
     local b
     if ffi.abi("le") then -- fix endianness
-      b = ffi.new("char[8]")
+      b = ffi.new("unsigned char[8]")
       for i=0,7 do b[i] = _b[7-i] end
     else b = _b end
     sbuffer_append_tbl(buffer,{0xcb})
@@ -177,9 +179,71 @@ packers.table = function(data)
   end
 end
 
--- Main functions
+-- types decoding
 
-local up = require "luajit-msgpack" -- TODO remove
+local types_map = {
+    [0xc0] = "nil",
+    [0xc2] = "false",
+    [0xc3] = "true",
+    [0xca] = "float",
+    [0xcb] = "double",
+    [0xcc] = "uint8",
+    [0xcd] = "uint16",
+    [0xce] = "uint32",
+    [0xcf] = "uint64",
+    [0xd0] = "int8",
+    [0xd1] = "int16",
+    [0xd2] = "int32",
+    [0xd3] = "int64",
+    [0xda] = "raw16",
+    [0xdb] = "raw32",
+    [0xdc] = "array16",
+    [0xdd] = "array32",
+    [0xde] = "map16",
+    [0xdf] = "map32",
+  }
+
+local type_for = function(n)
+  if types_map[n] then return types_map[n]
+  elseif n < 0xc0 then
+    if n < 0x80 then return "fixnum_pos"
+    elseif n < 0x90 then return "fixmap"
+    elseif n < 0x0a then return "fixarray"
+    else return "fixraw" end
+  elseif n > 0xdf then return "fixnum_neg"
+  else return "undefined" end
+end
+
+--- unpackers
+
+local unpackers = {}
+
+-- TODO remove when complete
+local up = require "luajit-msgpack"
+local lj_unpack = function(s,offset)
+  local offset,data = up.unpack(s,offset)
+  return offset,data
+end
+
+local fbcks = {l = {}} -- TODO remove when complete
+unpackers.dynamic = function(buf,offset)
+  local b0 = buf.data[offset]
+  local obj_type = type_for(b0)
+  if not unpackers[obj_type] then -- TODO remove when complete
+    if not fbcks.l[obj_type] then
+      print(string.format("WARNING: fallback for type %s (%d)",obj_type,b0))
+      fbcks.l[obj_type] = true
+    end
+    return up.unpack(ffi.string(buf.data,buf.size),offset)
+  end
+  return unpackers[obj_type](buf.data,offset) -- offset,data
+end
+
+unpackers.undefined = function(buf,offset)
+  error("unimplemented")
+end
+
+-- Main functions
 
 local ljp_pack = function(data)
   sbuffer_init(buffer)
@@ -190,8 +254,13 @@ local ljp_pack = function(data)
 end
 
 local ljp_unpack = function(s,offset)
-  -- TODO implement me for real
-  local offset,data = up.unpack(s,offset)
+  if offset == nil then offset = 0 end
+  if type(s) ~= "string" then return false,"invalid argument" end
+  sbuffer_init(buffer)
+  sbuffer_append_str(buffer,s,#s)
+  local data
+  offset,data = unpackers.dynamic(buffer,offset)
+  sbuffer_destroy(buffer)
   return offset,data
 end
 
