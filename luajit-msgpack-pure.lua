@@ -237,6 +237,7 @@ end
 local types_len_map = {
   uint16 = 2, uint32 = 4, uint64 = 8,
   int16 = 2, int32 = 4, int64 = 8,
+  float = 4, double = 8,
 }
 
 
@@ -291,25 +292,33 @@ unpackers["uint8"] = function(buf,offset)
   return offset+2,buf.data[offset+1]
 end
 
-local unpacker_intx
+local unpacker_number
 if LITTLE_ENDIAN then
-  unpacker_intx = function(buf,offset)
+  unpacker_number = function(buf,offset)
     local obj_type = type_for(buf.data[offset])
     local l = types_len_map[obj_type]
     rcopy(t_buf,buf.data+offset+1,l)
-    return offset+l+1,tonumber(ffi.cast(obj_type .. "_t *",t_buf)[0])
+    local tx
+    if (obj_type == "float") or (obj_type == "double") then
+      tx = obj_type .. " *"
+    else tx = obj_type .. "_t *" end
+    return offset+l+1,tonumber(ffi.cast(tx,t_buf)[0])
   end
 else
-  unpacker_intx = function(buf,offset)
+  unpacker_number = function(buf,offset)
     local obj_type = type_for(buf.data[offset])
     local l = types_len_map[obj_type]
-    return offset+l+1,tonumber(ffi.cast(obj_type .. "_t *",t_buf)[0])
+    local tx
+    if (obj_type == "float") or (obj_type == "double") then
+      tx = obj_type .. " *"
+    else tx = obj_type .. "_t *" end
+    return offset+l+1,tonumber(ffi.cast(tx,t_buf)[0])
   end
 end
 
-unpackers["uint16"] = unpacker_intx
-unpackers["uint32"] = unpacker_intx
-unpackers["uint64"] = unpacker_intx
+unpackers["uint16"] = unpacker_number
+unpackers["uint32"] = unpacker_number
+unpackers["uint64"] = unpacker_number
 
 unpackers["fixnum_neg"] = function(buf,offset)
   -- alternative to cast below:
@@ -321,9 +330,12 @@ unpackers["int8"] = function(buf,offset)
   return offset+2,ffi.cast("int8_t *",buf.data+offset+1)[0]
 end
 
-unpackers["int16"] = unpacker_intx
-unpackers["int32"] = unpacker_intx
-unpackers["int64"] = unpacker_intx
+unpackers["int16"] = unpacker_number
+unpackers["int32"] = unpacker_number
+unpackers["int64"] = unpacker_number
+
+unpackers["float"] = unpacker_number
+unpackers["double"] = unpacker_number
 
 -- Main functions
 
