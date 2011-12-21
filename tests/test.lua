@@ -128,6 +128,10 @@ end
 
 print(" OK")
 
+-- Floating point tests
+printf("Floating point tests ")
+print(" TODO")
+
 -- String tests
 
 printf("String tests ")
@@ -136,6 +140,10 @@ print(" TODO")
 -- Table tests
 
 printf("Table tests ")
+print(" TODO")
+
+-- Floating point tests
+printf("Map tests ")
 print(" TODO")
 
 -- From MessagePack test suite
