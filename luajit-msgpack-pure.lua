@@ -240,32 +240,53 @@ local types_len_map = {
   float = 4, double = 8,
 }
 
-
 --- unpackers
 
 local unpackers = {}
 
--- TODO remove when complete
-local up = require "luajit-msgpack"
-local lj_unpack = function(s,offset)
-  local offset,data = up.unpack(s,offset)
-  return offset,data
+local unpack_number
+if LITTLE_ENDIAN then
+  unpack_number = function(buf,offset,ntype,nlen)
+    rcopy(t_buf,buf.data+offset+1,nlen)
+    return tonumber(ffi.cast(ntype,t_buf)[0])
+  end
+else
+  unpack_number = function(buf,offset,ntype,nlen)
+    return tonumber(ffi.cast(ntype,buf.data+offset+1)[0])
+  end
 end
 
-local fbcks = {l = {}} -- TODO remove when complete
+local unpacker_number = function(buf,offset)
+  local obj_type = type_for(buf.data[offset])
+  local nlen = types_len_map[obj_type]
+  local ntype
+  if (obj_type == "float") or (obj_type == "double") then
+    ntype = obj_type .. " *"
+  else ntype = obj_type .. "_t *" end
+  return offset+nlen+1,unpack_number(buf,offset,ntype,nlen)
+end
+
+local unpack_map = function(buf,offset,n)
+  local r = {}
+  local k,v
+  for i=1,n do
+    offset,k = unpackers.dynamic(buf,offset)
+    offset,v = unpackers.dynamic(buf,offset)
+    r[k] = v
+  end
+  return offset,r
+end
+
+local unpack_array = function(buf,offset,n)
+  local r = {}
+  for i=1,n do offset,r[i] = unpackers.dynamic(buf,offset) end
+  return offset,r
+end
+
 unpackers.dynamic = function(buf,offset)
   if offset >= buf.size then return nil,nil end
   local obj_type = type_for(buf.data[offset])
-  if not unpackers[obj_type] then -- TODO remove when complete
-    if not fbcks.l[obj_type] then
-      print(string.format(
-        "WARNING: fallback for type %s (%d)",obj_type,buf.data[offset]
-      ))
-      fbcks.l[obj_type] = true
-    end
-    return up.unpack(ffi.string(buf.data,buf.size),offset)
-  end
-  return unpackers[obj_type](buf,offset) -- offset,data
+  return unpackers[obj_type](buf,offset)
 end
 
 unpackers.undefined = function(buf,offset)
@@ -284,58 +305,73 @@ unpackers["true"] = function(buf,offset)
   return offset+1,true
 end
 
-unpackers["fixnum_pos"] = function(buf,offset)
+unpackers.fixnum_pos = function(buf,offset)
   return offset+1,buf.data[offset]
 end
 
-unpackers["uint8"] = function(buf,offset)
+unpackers.uint8 = function(buf,offset)
   return offset+2,buf.data[offset+1]
 end
 
-local unpacker_number
-if LITTLE_ENDIAN then
-  unpacker_number = function(buf,offset)
-    local obj_type = type_for(buf.data[offset])
-    local l = types_len_map[obj_type]
-    rcopy(t_buf,buf.data+offset+1,l)
-    local tx
-    if (obj_type == "float") or (obj_type == "double") then
-      tx = obj_type .. " *"
-    else tx = obj_type .. "_t *" end
-    return offset+l+1,tonumber(ffi.cast(tx,t_buf)[0])
-  end
-else
-  unpacker_number = function(buf,offset)
-    local obj_type = type_for(buf.data[offset])
-    local l = types_len_map[obj_type]
-    local tx
-    if (obj_type == "float") or (obj_type == "double") then
-      tx = obj_type .. " *"
-    else tx = obj_type .. "_t *" end
-    return offset+l+1,tonumber(ffi.cast(tx,t_buf)[0])
-  end
-end
+unpackers.uint16 = unpacker_number
+unpackers.uint32 = unpacker_number
+unpackers.uint64 = unpacker_number
 
-unpackers["uint16"] = unpacker_number
-unpackers["uint32"] = unpacker_number
-unpackers["uint64"] = unpacker_number
-
-unpackers["fixnum_neg"] = function(buf,offset)
+unpackers.fixnum_neg = function(buf,offset)
   -- alternative to cast below:
   -- return offset+1,-band(bxor(buf.data[offset],0x1f),0x1f)-1
   return offset+1,ffi.cast("int8_t *",buf.data)[offset]
 end
 
-unpackers["int8"] = function(buf,offset)
+unpackers.int8 = function(buf,offset)
   return offset+2,ffi.cast("int8_t *",buf.data+offset+1)[0]
 end
 
-unpackers["int16"] = unpacker_number
-unpackers["int32"] = unpacker_number
-unpackers["int64"] = unpacker_number
+unpackers.int16 = unpacker_number
+unpackers.int32 = unpacker_number
+unpackers.int64 = unpacker_number
 
-unpackers["float"] = unpacker_number
-unpackers["double"] = unpacker_number
+unpackers.float = unpacker_number
+unpackers.double = unpacker_number
+
+unpackers.fixraw = function(buf,offset)
+  local n = band(buf.data[offset],0x1f)
+  return offset+n+1,ffi.string(buf.data+offset+1,n)
+end
+
+unpackers.raw16 = function(buf,offset)
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  return offset+n+3,ffi.string(buf.data+offset+3,n)
+end
+
+unpackers.raw32 = function(buf,offset)
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  return offset+n+5,ffi.string(buf.data+offset+5,n)
+end
+
+unpackers.fixarray = function(buf,offset)
+  return unpack_array(buf,offset+1,band(buf.data[offset],0x0f))
+end
+
+unpackers.array16 = function(buf,offset)
+  return unpack_array(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+end
+
+unpackers.array32 = function(buf,offset)
+  return unpack_array(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+end
+
+unpackers.fixmap = function(buf,offset)
+  return unpack_map(buf,offset+1,band(buf.data[offset],0x0f))
+end
+
+unpackers.map16 = function(buf,offset)
+  return unpack_map(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+end
+
+unpackers.map32 = function(buf,offset)
+  return unpack_map(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+end
 
 -- Main functions
 
