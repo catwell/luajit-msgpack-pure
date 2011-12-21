@@ -56,9 +56,9 @@ for i=0,#data do -- 0 tests nil!
 end
 print(" OK")
 
--- Number tests
+-- Integer tests
 
-printf("Number tests ")
+printf("Integer tests ")
 
 local nb_test = function(n)
   offset,res = mp.unpack(mp.pack(n))
@@ -132,9 +132,9 @@ print(" OK")
 printf("Floating point tests ")
 print(" TODO")
 
--- String tests
+-- Raw tests
 
-printf("String tests ")
+printf("Raw tests ")
 print(" TODO")
 
 -- Table tests

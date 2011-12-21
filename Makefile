@@ -12,7 +12,6 @@ all:
 	@echo "This is a pure module. Nothing to make :)"
 
 test:
-	@echo "NOTE: you need both luajit-msgpack-pure *and* luajit-msgpack installed for tests"
 	$(LUAJIT) tests/test.lua
 
 install:
