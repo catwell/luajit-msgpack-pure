@@ -228,7 +228,7 @@ local type_for = function(n)
   elseif n < 0xc0 then
     if n < 0x80 then return "fixnum_pos"
     elseif n < 0x90 then return "fixmap"
-    elseif n < 0x0a then return "fixarray"
+    elseif n < 0xa0 then return "fixarray"
     else return "fixraw" end
   elseif n > 0xdf then return "fixnum_neg"
   else return "undefined" end
