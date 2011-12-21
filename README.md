@@ -8,12 +8,11 @@ luajit-msgpack-pure does not depend on the MessagePack C library.
 Everything is re-implemented in LuaJIT code (using the FFI but only to
 manipulate data structures).
 
-## Status
+## TODO
 
-Packing is implemented, unpacking is proxied to luajit-msgpack for now.
-This means you probably don't want to use this in your projects yet.
-
-I will not care about speed until it has the same coverage as luajit-msgpack.
+- Missing datatype tests
+- Comparison tests vs. luajit-msgpack
+- Benchmark for speed
 
 ## Usage
 
