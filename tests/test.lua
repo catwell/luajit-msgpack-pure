@@ -60,82 +60,136 @@ print(" OK")
 
 printf("Integer tests ")
 
-local nb_test = function(n)
+local nb_test = function(n,sz)
   offset,res = mp.unpack(mp.pack(n))
   assert(offset,"decoding failed")
   if not res == n then
     assert(false,string.format("wrong value %d, expected %d",res,n))
   end
+  assert(offset == sz,string.format(
+    "wrong size %d for number %d (expected %d)",
+    offset,n,sz
+  ))
 end
 
 printf(".")
 for n=0,127 do -- positive fixnum
-  nb_test(n)
+  nb_test(n,1)
 end
 
 printf(".")
 for n=128,255 do -- uint8
-  nb_test(n)
+  nb_test(n,2)
 end
 
 printf(".")
-for n=255,65535 do -- uint16
-  nb_test(n)
+for n=256,65535 do -- uint16
+  nb_test(n,3)
 end
 
  -- uint32
 printf(".")
 for n=65536,65536+100 do
-  nb_test(n)
+  nb_test(n,5)
 end
 for n=4294967295-100,4294967295 do
-  nb_test(n)
+  nb_test(n,5)
 end
 
 printf(".")
 for n=4294967296,4294967296+100 do -- uint64
-  nb_test(n)
+  nb_test(n,9)
 end
 
 printf(".")
 for n=-1,-32,-1 do -- negative fixnum
-  nb_test(n)
+  nb_test(n,1)
 end
 
 printf(".")
 for n=-33,-128,-1 do -- int8
-  nb_test(n)
+  nb_test(n,2)
 end
 
 printf(".")
 for n=-129,-32768,-1 do -- int16
-  nb_test(n)
+  nb_test(n,3)
 end
 
 -- int32
 printf(".")
 for n=-32769,-32769-100,-1 do
-  nb_test(n)
+  nb_test(n,5)
 end
 for n=-2147483648+100,-2147483648,-1 do
-  nb_test(n)
+  nb_test(n,5)
 end
 
 printf(".")
 for n=-2147483649,-2147483649-100,-1 do -- int64
-  nb_test(n)
+  nb_test(n,9)
 end
 
 print(" OK")
 
 -- Floating point tests
 printf("Floating point tests ")
-print(" TODO")
+
+printf(".")
+for i=1,100 do
+  local n = math.random()*200-100
+  nb_test(n,9)
+end
+
+print(" OK")
 
 -- Raw tests
 
 printf("Raw tests ")
-print(" TODO")
+
+local rand_raw = function(len)
+  local t = {}
+  for i=1,len do t[i] = string.char(math.random(0,255)) end
+  return table.concat(t)
+end
+
+local raw_test = function(raw,overhead)
+  offset,res = mp.unpack(mp.pack(raw))
+  assert(offset,"decoding failed")
+  if not res == raw then
+    assert(false,string.format("wrong raw (len %d - %d)",#res,#raw))
+  end
+  assert(offset-#raw == overhead,string.format(
+    "wrong overhead %d for #raw %d (expected %d)",
+    offset-#raw,#raw,overhead
+  ))
+end
+
+printf(".")
+for n=0,31 do -- fixraw
+  raw_test(rand_raw(n),1)
+end
+
+-- raw16
+printf(".")
+for n=32,32+100 do
+  raw_test(rand_raw(n),3)
+end
+for n=65535-100,65535 do
+  raw_test(rand_raw(n),3)
+end
+
+ -- raw32
+printf(".")
+for n=65536,65536+100 do
+  raw_test(rand_raw(n),5)
+end
+-- below: too slow
+-- for n=4294967295-100,4294967295 do
+--   raw_test(rand_raw(n),5)
+-- end
+
+print(" OK")
 
 -- Table tests
 
