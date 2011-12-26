@@ -1,5 +1,6 @@
 local ffi = require "ffi"
 local bit = require "bit"
+local math = require "math"
 
 -- standard cdefs
 
