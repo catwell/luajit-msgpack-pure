@@ -8,6 +8,13 @@ luajit-msgpack-pure does not depend on the MessagePack C library.
 Everything is re-implemented in LuaJIT code (using the FFI but only to
 manipulate data structures).
 
+## Alternatives
+
+ - [lua-msgpack](https://github.com/kengonakajima/lua-msgpack) (pure Lua)
+ - [lua-msgpack-native](https://github.com/kengonakajima/lua-msgpack-native)
+   (Lua-specific C implementation)
+ - [MPLua](https://github.com/nobu-k/mplua) (binding)
+
 ## TODO
 
 - Missing datatype tests
@@ -15,4 +22,4 @@ manipulate data structures).
 
 ## Usage
 
-See tests/test.lua for usage.
+See tests/test.lua.
