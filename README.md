@@ -12,7 +12,6 @@ manipulate data structures).
 
 - Missing datatype tests
 - Comparison tests vs. luajit-msgpack
-- Benchmark for speed
 
 ## Usage
 
