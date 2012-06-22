@@ -168,11 +168,14 @@ end
 packers.table = function(data)
   local is_map,ndata,nmax = false,0,0
   for k,_ in pairs(data) do
-    if type(k) == "number" then
+    if (type(k) == "number") and (k > 0) then
       if k > nmax then nmax = k end
     else is_map = true end
     ndata = ndata+1
   end
+  if (nmax ~= ndata) then -- there are holes
+    is_map = true
+  end -- else nmax == ndata == #data
   if is_map then -- pack as map
     if ndata < 16 then
       sbuffer_append_tbl(buffer,{bor(0x80,ndata)})
@@ -188,16 +191,16 @@ packers.table = function(data)
       packers[type(v)](v)
     end
   else -- pack as array
-    if nmax < 16 then
-      sbuffer_append_tbl(buffer,{bor(0x90,nmax)})
-    elseif nmax < 65536 then
-      sbuffer_append_intx(buffer,nmax,16,0xdc)
-    elseif nmax < 4294967296 then
-      sbuffer_append_intx(buffer,nmax,32,0xdd)
+    if ndata < 16 then
+      sbuffer_append_tbl(buffer,{bor(0x90,ndata)})
+    elseif ndata < 65536 then
+      sbuffer_append_intx(buffer,ndata,16,0xdc)
+    elseif ndata < 4294967296 then
+      sbuffer_append_intx(buffer,ndata,32,0xdd)
     else
       error("overflow")
     end
-    for i=1,nmax do packers[type(data[i])](data[i]) end
+    for i=1,ndata do packers[type(data[i])](data[i]) end
   end
 end
 
