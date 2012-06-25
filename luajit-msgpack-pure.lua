@@ -99,6 +99,33 @@ packers.boolean = function(data)
   end
 end
 
+local set_fp_type = function(t)
+  local ptype,typebyte
+  if t == "double" then
+    typebyte,ptype = 0xcb,ffi.typeof("double *")
+  elseif t == "float" then
+    typebyte,ptype = 0xca,ffi.typeof("float *")
+  else return nil end
+  local len = ffi.sizeof(t)
+  if LITTLE_ENDIAN then
+    packers.fpnum = function(n)
+      ffi.cast(ptype,t_buf2)[0] = n
+      rcopy(t_buf,t_buf2,len)
+      sbuffer_append_tbl(buffer,{typebyte})
+      sbuffer_append_str(buffer,t_buf,len)
+    end
+  else
+    packers.fpnum = function(n)
+      ffi.cast(ptype,t_buf)[0] = n
+      sbuffer_append_tbl(buffer,{typebyte})
+      sbuffer_append_str(buffer,t_buf,len)
+    end
+  end
+  return true
+end
+
+set_fp_type("double") -- default
+
 packers.number = function(n)
   if math.floor(n) == n then -- integer
     if n >= 0 then -- positive integer
@@ -127,15 +154,7 @@ packers.number = function(n)
       end
     end
   else -- floating point
-    -- TODO poss. to use floats instead
-    if LITTLE_ENDIAN then
-      ffi.cast("double *",t_buf2)[0] = n
-      rcopy(t_buf,t_buf2,8)
-    else
-      ffi.cast("double *",t_buf)[0] = n
-    end
-    sbuffer_append_tbl(buffer,{0xcb})
-    sbuffer_append_str(buffer,t_buf,8)
+    packers.fpnum(n)
   end
 end
 
@@ -402,4 +421,5 @@ end
 return {
   pack = ljp_pack,
   unpack = ljp_unpack,
+  set_fp_type = set_fp_type,
 }

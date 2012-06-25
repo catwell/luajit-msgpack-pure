@@ -68,10 +68,10 @@ local nb_test = function(n,sz)
   offset,res = mp.unpack(mp.pack(n))
   assert(offset,"decoding failed")
   if not res == n then
-    assert(false,string.format("wrong value %d, expected %d",res,n))
+    assert(false,string.format("wrong value %g, expected %g",res,n))
   end
   assert(offset == sz,string.format(
-    "wrong size %d for number %d (expected %d)",
+    "wrong size %d for number %g (expected %d)",
     offset,n,sz
   ))
 end
@@ -139,7 +139,21 @@ print(" OK")
 -- Floating point tests
 printf("Floating point tests ")
 
+printf(".") -- default is double
+for i=1,100 do
+  local n = math.random()*200-100
+  nb_test(n,9)
+end
+
 printf(".")
+mp.set_fp_type("float")
+for i=1,100 do
+  local n = math.random()*200-100
+  nb_test(n,5)
+end
+
+printf(".")
+mp.set_fp_type("double")
 for i=1,100 do
   local n = math.random()*200-100
   nb_test(n,9)
