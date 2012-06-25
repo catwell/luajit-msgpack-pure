@@ -11,14 +11,16 @@ manipulate data structures).
 ## Alternatives
 
  - [lua-msgpack](https://github.com/kengonakajima/lua-msgpack) (pure Lua)
+ - [lua-cmsgpack](git://github.com/antirez/lua-cmsgpack.git)
+   (Lua-specific C implementation used in Redis)
  - [lua-msgpack-native](https://github.com/kengonakajima/lua-msgpack-native)
-   (Lua-specific C implementation)
+   (Lua-specific C implementation targeting luvit)
  - [MPLua](https://github.com/nobu-k/mplua) (binding)
 
 ## TODO
 
 - Missing datatype tests
-- Comparison tests vs. luajit-msgpack
+- Comparison tests vs. other implementations
 
 ## Usage
 
