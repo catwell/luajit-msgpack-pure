@@ -67,7 +67,7 @@ printf("Integer tests ")
 local nb_test = function(n,sz)
   offset,res = mp.unpack(mp.pack(n))
   assert(offset,"decoding failed")
-  if not res == n then
+  if not (res == n) then
     assert(false,string.format("wrong value %g, expected %g",res,n))
   end
   assert(offset == sz,string.format(
@@ -174,7 +174,7 @@ end
 local raw_test = function(raw,overhead)
   offset,res = mp.unpack(mp.pack(raw))
   assert(offset,"decoding failed")
-  if not res == raw then
+  if not (res == raw) then
     assert(false,string.format("wrong raw (len %d - %d)",#res,#raw))
   end
   assert(offset-#raw == overhead,string.format(
