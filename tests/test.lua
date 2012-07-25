@@ -211,15 +211,6 @@ local nan_test = function(sz)
   ))
 end
 
-local hdump = function(s)
-  local c2hex = function(c)
-    return string.format("%02x",c:byte())
-  end
-  return s:gsub("(.)",c2hex)
-end
-
-
-
 mp.set_fp_type("float")
 
 printf(".")
