@@ -177,10 +177,28 @@ print(" OK")
 -- Quasi-numbers tests
 printf("Quasi-numbers tests ")
 
+-- Notes and conventions:
+
+-- IEEE 754 format remainder:
+-- - Float:  [1] sign | [8] exp  | [23] frac
+-- - Double: [1] sign | [11] exp | [52] frac
+
+-- Inifinities have an exponent of all ones and a fraction of zero:
+-- - +inf: 0x7f800000 / 0x7ff0000000000000
+-- - -inf: 0xff800000 / 0xfff0000000000000
+
+-- NaNs have any sign, an exponent of all ones and any fraction except 0.
+-- If the MSB of the fraction is set then it is a QNaN, otherwise it is a SNaN.
+
+-- NaNs are *packed* as QNaNs (non-signaling), specifically
+-- 0xff880000 / 0xfff8000000000000.
+-- All QNaNs and SNaNs should be decoded as `nan`, but this might not
+-- always be the case currently because of specificities of LuaJIT.
+
 local _pos_inf,_neg_inf = 1/0,-1/0
 
-local nan_test = function()
-  local n,sz = 0/0,9
+local nan_test = function(sz)
+  local n = 0/0
   offset,res = mp.unpack(mp.pack(n))
   assert(offset,"decoding failed")
   if not ((type(res) == "number") and (res ~= res)) then
@@ -193,14 +211,36 @@ local nan_test = function()
   ))
 end
 
-printf("x")
--- nb_test(_pos_inf,9)
+local hdump = function(s)
+  local c2hex = function(c)
+    return string.format("%02x",c:byte())
+  end
+  return s:gsub("(.)",c2hex)
+end
 
-printf("x")
--- nb_test(_neg_inf,9)
+
+
+mp.set_fp_type("float")
 
 printf(".")
-nan_test()
+nb_test(_pos_inf,5)
+
+printf(".")
+nb_test(_neg_inf,5)
+
+printf(".")
+nan_test(5)
+
+mp.set_fp_type("double")
+
+printf(".")
+nb_test(_pos_inf,9)
+
+printf(".")
+nb_test(_neg_inf,9)
+
+printf(".")
+nan_test(9)
 
 print(" OK")
 

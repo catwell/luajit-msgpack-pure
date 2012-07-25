@@ -100,11 +100,17 @@ packers.boolean = function(data)
 end
 
 local set_fp_type = function(t)
-  local ptype,typebyte
+  local ptype,typebyte,_posinf,_neginf,_nan
   if t == "double" then
     typebyte,ptype = 0xcb,ffi.typeof("double *")
+    _posinf = {typebyte,0x7f,0xf0,0x00,0x00,0x00,0x00,0x00,0x00}
+    _neginf = {typebyte,0xff,0xf0,0x00,0x00,0x00,0x00,0x00,0x00}
+    _nan = {typebyte,0xff,0xf8,0x00,0x00,0x00,0x00,0x00,0x00}
   elseif t == "float" then
     typebyte,ptype = 0xca,ffi.typeof("float *")
+    _posinf = {typebyte,0x7f,0x80,0x00,0x00}
+    _neginf = {typebyte,0xff,0x80,0x00,0x00}
+    _nan = {typebyte,0xff,0x88,0x00,0x00}
   else return nil end
   local len = ffi.sizeof(t)
   if LITTLE_ENDIAN then
@@ -120,6 +126,15 @@ local set_fp_type = function(t)
       sbuffer_append_tbl(buffer,{typebyte})
       sbuffer_append_str(buffer,t_buf,len)
     end
+  end
+  packers.posinf = function()
+    sbuffer_append_tbl(buffer,_posinf)
+  end
+  packers.neginf = function()
+    sbuffer_append_tbl(buffer,_neginf)
+  end
+  packers.nan = function()
+    sbuffer_append_tbl(buffer,_nan)
   end
   return true
 end
@@ -137,6 +152,8 @@ packers.number = function(n)
         sbuffer_append_intx(buffer,n,16,0xcd)
       elseif n < 4294967296 then -- uint32
         sbuffer_append_intx(buffer,n,32,0xce)
+      elseif n == math.huge then -- +inf
+        packers.posinf()
       else -- uint64
         sbuffer_append_intx(buffer,n,64,0xcf)
       end
@@ -149,10 +166,14 @@ packers.number = function(n)
         sbuffer_append_intx(buffer,n,16,0xd1)
       elseif n >= -2147483648 then -- int32
         sbuffer_append_intx(buffer,n,32,0xd2)
+      elseif n == -math.huge then -- -inf
+        packers.neginf()
       else -- int64
         sbuffer_append_intx(buffer,n,64,0xd3)
       end
     end
+  elseif n ~= n then -- nan
+    packers.nan()
   else -- floating point
     packers.fpnum(n)
   end
