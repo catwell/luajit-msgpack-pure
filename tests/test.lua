@@ -76,7 +76,7 @@ local nb_test = function(n,sz,epsilon)
       ))
     end
   else
-    if not (res == n) then
+    if res ~= n then
       assert(false,string.format("wrong value %g, expected %g",res,n))
     end
   end
@@ -217,7 +217,7 @@ end
 local raw_test = function(raw,overhead)
   offset,res = mp.unpack(mp.pack(raw))
   assert(offset,"decoding failed")
-  if not (res == raw) then
+  if res ~= raw then
     assert(false,string.format("wrong raw (len %d - %d)",#res,#raw))
   end
   assert(offset-#raw == overhead,string.format(
