@@ -110,7 +110,7 @@ for n=4294967295-100,4294967295 do
   nb_test(n,5)
 end
 
--- printf(".")
+printf("x")
 -- below: broken!
 -- for n=4294967296,4294967296+100 do -- uint64
 --   nb_test(n,9)
@@ -140,7 +140,7 @@ for n=-2147483648+100,-2147483648,-1 do
   nb_test(n,5)
 end
 
--- printf(".")
+printf("x")
 -- below: broken!
 -- for n=-2147483649,-2147483649-100,-1 do -- int64
 --   nb_test(n,9)
@@ -171,6 +171,36 @@ for i=1,100 do
   local n = math.random()*200-100
   nb_test(n,9)
 end
+
+print(" OK")
+
+-- Quasi-numbers tests
+printf("Quasi-numbers tests ")
+
+local _pos_inf,_neg_inf = 1/0,-1/0
+
+local nan_test = function()
+  local n,sz = 0/0,9
+  offset,res = mp.unpack(mp.pack(n))
+  assert(offset,"decoding failed")
+  if not ((type(res) == "number") and (res ~= res)) then
+    print(type(res))
+    assert(false,string.format("wrong value %g, expected %g",res,n))
+  end
+  assert(offset == sz,string.format(
+    "wrong size %d for number %g (expected %d)",
+    offset,n,sz
+  ))
+end
+
+printf("x")
+-- nb_test(_pos_inf,9)
+
+printf("x")
+-- nb_test(_neg_inf,9)
+
+printf(".")
+nan_test()
 
 print(" OK")
 
