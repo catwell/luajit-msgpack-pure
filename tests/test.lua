@@ -21,8 +21,8 @@ local printf = function(p,...)
 end
 
 local msgpack_cases = {
-  false,true,nil,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,127,127,255,65535,
-  4294967295,-32,-32,-128,-32768,-2147483648,0.0,-0.0,1.0,-1.0,
+  false,true,nil,0,0,0,0,0,0,0,0,0,-1,-1,-1,-1,-1,127,127,255,2^16-1,
+  2^32-1,-32,-32,-128,-2^15,-2^31,0.0,-0.0,1.0,-1.0,
   "a","a","a","","","",
   {0},{0},{0},{},{},{},{},{},{},{a=97},{a=97},{a=97},{{}},{{"a"}},
 }
@@ -100,22 +100,22 @@ for n=128,255 do -- uint8
 end
 
 printf(".")
-for n=256,65535 do -- uint16
+for n=256,2^16-1 do -- uint16
   nb_test(n,3)
 end
 
  -- uint32
 printf(".")
-for n=65536,65536+100 do
+for n=2^16,2^16+100 do
   nb_test(n,5)
 end
-for n=4294967295-100,4294967295 do
+for n=2^32-101,2^32-1 do
   nb_test(n,5)
 end
 
 printf("x")
 -- below: broken!
--- for n=4294967296,4294967296+100 do -- uint64
+-- for n=2^32,2^32+100 do -- uint64
 --   nb_test(n,9)
 -- end
 
@@ -130,16 +130,16 @@ for n=-33,-128,-1 do -- int8
 end
 
 printf(".")
-for n=-129,-32768,-1 do -- int16
+for n=-129,-2^15,-1 do -- int16
   nb_test(n,3)
 end
 
 -- int32
 printf(".")
-for n=-32769,-32769-100,-1 do
+for n=-2^15-1,-2^15-101,-1 do
   nb_test(n,5)
 end
-for n=-2147483648+100,-2147483648,-1 do
+for n=-2^31+100,-2^31,-1 do
   nb_test(n,5)
 end
 
@@ -270,17 +270,17 @@ printf(".")
 for n=32,32+100 do
   raw_test(rand_raw(n),3)
 end
-for n=65535-100,65535 do
+for n=2^16-101,2^16-1 do
   raw_test(rand_raw(n),3)
 end
 
  -- raw32
 printf(".")
-for n=65536,65536+100 do
+for n=2^16,2^16+100 do
   raw_test(rand_raw(n),5)
 end
 if RUN_LARGE_TESTS then
-  for n=4294967295-100,4294967295 do
+  for n=2^32-101,2^32-1 do
     raw_test(rand_raw(n),5)
   end
 end
@@ -363,17 +363,17 @@ printf(".")
 for n=32,32+100 do
   buf_test(rand_buf(n),n,3)
 end
-for n=65535-100,65535 do
+for n=2^16-101,2^16-1 do
   buf_test(rand_buf(n),n,3)
 end
 
  -- buf32
 printf(".")
-for n=65536,65536+100 do
+for n=2^16,2^16+100 do
   buf_test(rand_buf(n),n,5)
 end
 if RUN_LARGE_TESTS then
-  for n=4294967295-100,4294967295 do
+  for n=2^32-101,2^32-1 do
     buf_test(rand_buf(n),n,5)
   end
 end

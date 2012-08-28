@@ -154,9 +154,9 @@ packers.number = function(n)
         sbuffer_append_byte(buffer,n)
       elseif n < 256 then -- uint8
         sbuffer_append_tbl(buffer,{0xcc,n})
-      elseif n < 65536 then -- uint16
+      elseif n < 2^16 then -- uint16
         sbuffer_append_intx(buffer,n,16,0xcd)
-      elseif n < 4294967296 then -- uint32
+      elseif n < 2^32 then -- uint32
         sbuffer_append_intx(buffer,n,32,0xce)
       elseif n == math.huge then -- +inf
         packers.posinf()
@@ -168,9 +168,9 @@ packers.number = function(n)
         sbuffer_append_byte(buffer,bor(0xe0,n))
       elseif n >= -128 then -- int8
         sbuffer_append_tbl(buffer,{0xd0,n})
-      elseif n >= -32768 then -- int16
+      elseif n >= -2^15 then -- int16
         sbuffer_append_intx(buffer,n,16,0xd1)
-      elseif n >= -2147483648 then -- int32
+      elseif n >= -2^31 then -- int32
         sbuffer_append_intx(buffer,n,32,0xd2)
       elseif n == -math.huge then -- -inf
         packers.neginf()
@@ -189,9 +189,9 @@ packers.string = function(data)
   local n = #data
   if n < 32 then
     sbuffer_append_byte(buffer,bor(0xa0,n))
-  elseif n < 65536 then
+  elseif n < 2^16 then
     sbuffer_append_intx(buffer,n,16,0xda)
-  elseif n < 4294967296 then
+  elseif n < 2^32 then
     sbuffer_append_intx(buffer,n,32,0xdb)
   else
     error("overflow")
@@ -225,9 +225,9 @@ packers.table = function(data)
   if is_map then -- pack as map
     if ndata < 16 then
       sbuffer_append_byte(buffer,bor(0x80,ndata))
-    elseif ndata < 65536 then
+    elseif ndata < 2^16 then
       sbuffer_append_intx(buffer,ndata,16,0xde)
-    elseif ndata < 4294967296 then
+    elseif ndata < 2^32 then
       sbuffer_append_intx(buffer,ndata,32,0xdf)
     else
       error("overflow")
@@ -239,9 +239,9 @@ packers.table = function(data)
   else -- pack as array
     if ndata < 16 then
       sbuffer_append_byte(buffer,bor(0x90,ndata))
-    elseif ndata < 65536 then
+    elseif ndata < 2^16 then
       sbuffer_append_intx(buffer,ndata,16,0xdc)
-    elseif ndata < 4294967296 then
+    elseif ndata < 2^32 then
       sbuffer_append_intx(buffer,ndata,32,0xdd)
     else
       error("overflow")
@@ -254,9 +254,9 @@ packers.cdata = function(data) -- msgpack-js
   local n = ffi.sizeof(data)
   if not n then
     error("cannot pack cdata of unknown size")
-  elseif n < 65536 then
+  elseif n < 2^16 then
     sbuffer_append_intx(buffer,n,16,0xd8)
-  elseif n < 4294967296 then
+  elseif n < 2^32 then
     sbuffer_append_intx(buffer,n,32,0xd9)
   else
     error("overflow")
