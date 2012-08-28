@@ -56,10 +56,16 @@ local sbuffer_append_str = function(self,buf,len)
   self.size = self.size + len
 end
 
+local sbuffer_append_byte = function(self,b)
+  sbuffer_realloc(self,1)
+  self.data[self.size] = b
+  self.size = self.size + 1
+end
+
 local sbuffer_append_tbl = function(self,t)
   local len = #t
   sbuffer_realloc(self,len)
-  local p = self.data + self.size -1
+  local p = self.data + self.size - 1
   for i=1,len do p[i] = t[i] end
   self.size = self.size + len
 end
@@ -88,14 +94,14 @@ packers.dynamic = function(data)
 end
 
 packers["nil"] = function(data)
-  sbuffer_append_tbl(buffer,{0xc0})
+  sbuffer_append_byte(buffer,0xc0)
 end
 
 packers.boolean = function(data)
   if data then -- pack true
-    sbuffer_append_tbl(buffer,{0xc3})
+    sbuffer_append_byte(buffer,0xc3)
   else -- pack false
-    sbuffer_append_tbl(buffer,{0xc2})
+    sbuffer_append_byte(buffer,0xc2)
   end
 end
 
@@ -117,13 +123,13 @@ local set_fp_type = function(t)
     packers.fpnum = function(n)
       ffi.cast(ptype,t_buf2)[0] = n
       rcopy(t_buf,t_buf2,len)
-      sbuffer_append_tbl(buffer,{typebyte})
+      sbuffer_append_byte(buffer,typebyte)
       sbuffer_append_str(buffer,t_buf,len)
     end
   else
     packers.fpnum = function(n)
       ffi.cast(ptype,t_buf)[0] = n
-      sbuffer_append_tbl(buffer,{typebyte})
+      sbuffer_append_byte(buffer,typebyte)
       sbuffer_append_str(buffer,t_buf,len)
     end
   end
@@ -145,7 +151,7 @@ packers.number = function(n)
   if math.floor(n) == n then -- integer
     if n >= 0 then -- positive integer
       if n < 128 then -- positive fixnum
-        sbuffer_append_tbl(buffer,{n})
+        sbuffer_append_byte(buffer,n)
       elseif n < 256 then -- uint8
         sbuffer_append_tbl(buffer,{0xcc,n})
       elseif n < 65536 then -- uint16
@@ -159,7 +165,7 @@ packers.number = function(n)
       end
     else -- negative integer
       if n >= -32 then -- negative fixnum
-        sbuffer_append_tbl(buffer,{bor(0xe0,n)})
+        sbuffer_append_byte(buffer,bor(0xe0,n))
       elseif n >= -128 then -- int8
         sbuffer_append_tbl(buffer,{0xd0,n})
       elseif n >= -32768 then -- int16
@@ -182,7 +188,7 @@ end
 packers.string = function(data)
   local n = #data
   if n < 32 then
-    sbuffer_append_tbl(buffer,{bor(0xa0,n)})
+    sbuffer_append_byte(buffer,bor(0xa0,n))
   elseif n < 65536 then
     sbuffer_append_intx(buffer,n,16,0xda)
   elseif n < 4294967296 then
@@ -218,7 +224,7 @@ packers.table = function(data)
   end -- else nmax == ndata == #data
   if is_map then -- pack as map
     if ndata < 16 then
-      sbuffer_append_tbl(buffer,{bor(0x80,ndata)})
+      sbuffer_append_byte(buffer,bor(0x80,ndata))
     elseif ndata < 65536 then
       sbuffer_append_intx(buffer,ndata,16,0xde)
     elseif ndata < 4294967296 then
@@ -232,7 +238,7 @@ packers.table = function(data)
     end
   else -- pack as array
     if ndata < 16 then
-      sbuffer_append_tbl(buffer,{bor(0x90,ndata)})
+      sbuffer_append_byte(buffer,bor(0x90,ndata))
     elseif ndata < 65536 then
       sbuffer_append_intx(buffer,ndata,16,0xdc)
     elseif ndata < 4294967296 then
