@@ -8,6 +8,7 @@ local tablex = require "pl.tablex"
 require "pl.strict"
 
 local mp = require "luajit-msgpack-pure"
+local ffi = require "ffi"
 
 local display = function(m,x)
   local _t = type(x)
@@ -326,3 +327,55 @@ for case_name,case_file in pairs(case_files) do
   )
   print(" OK")
 end
+
+-- msgpack-js compatibility
+printf("msgpack-js compatibility tests ")
+
+local rand_buf = function(len)
+  local buf = ffi.new("unsigned char[?]",len)
+  for i=0,len-1 do buf[i] = math.random(0,255) end
+  return buf
+end
+
+local buf_test = function(buf,expected_size,overhead)
+  offset,res = mp.unpack(mp.pack(buf))
+  assert(offset,"decoding failed")
+  assert(type(res) == "cdata",string.format("wrong type %s",type(res)))
+  local n = ffi.sizeof(res)
+  assert(n == (offset-overhead),string.format(
+    "wrong size %d (expected %d)",
+    n,(offset-overhead)
+  ))
+  for i=0,n-1 do
+    assert(buf[i] == res[i],"wrong value")
+  end
+end
+
+-- undefined
+printf(".")
+offset,res = mp.unpack(string.char(0xc4))
+assert(offset,"decoding failed")
+assert(offset == 1,"wrong size")
+assert(res == nil,"wrong value")
+
+-- buf16
+printf(".")
+for n=32,32+100 do
+  buf_test(rand_buf(n),n,3)
+end
+for n=65535-100,65535 do
+  buf_test(rand_buf(n),n,3)
+end
+
+ -- buf32
+printf(".")
+for n=65536,65536+100 do
+  buf_test(rand_buf(n),n,5)
+end
+if RUN_LARGE_TESTS then
+  for n=4294967295-100,4294967295 do
+    buf_test(rand_buf(n),n,5)
+  end
+end
+
+print(" OK")

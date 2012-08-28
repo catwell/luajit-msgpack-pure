@@ -250,12 +250,27 @@ packers.table = function(data)
   end
 end
 
+packers.cdata = function(data) -- msgpack-js
+  local n = ffi.sizeof(data)
+  if not n then
+    error("cannot pack cdata of unknown size")
+  elseif n < 65536 then
+    sbuffer_append_intx(buffer,n,16,0xd8)
+  elseif n < 4294967296 then
+    sbuffer_append_intx(buffer,n,32,0xd9)
+  else
+    error("overflow")
+  end
+  sbuffer_append_str(buffer,data,n)
+end
+
 -- types decoding
 
 local types_map = {
     [0xc0] = "nil",
     [0xc2] = "false",
     [0xc3] = "true",
+    [0xc4] = "nil", -- msgpack-js
     [0xca] = "float",
     [0xcb] = "double",
     [0xcc] = "uint8",
@@ -266,6 +281,8 @@ local types_map = {
     [0xd1] = "int16",
     [0xd2] = "int32",
     [0xd3] = "int64",
+    [0xd8] = "buf16", -- msgpack-js
+    [0xd9] = "buf32", -- msgpack-js
     [0xda] = "raw16",
     [0xdb] = "raw32",
     [0xdc] = "array16",
@@ -388,6 +405,20 @@ unpackers.double = unpacker_number
 unpackers.fixraw = function(buf,offset)
   local n = band(buf.data[offset],0x1f)
   return offset+n+1,ffi.string(buf.data+offset+1,n)
+end
+
+unpackers.buf16 = function(buf,offset)
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  local r = ffi.new("unsigned char[?]",n)
+  ffi.copy(r,buf.data+offset+3,n)
+  return offset+n+3,r
+end
+
+unpackers.buf32 = function(buf,offset)
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  local r = ffi.new("unsigned char[?]",n)
+  ffi.copy(r,buf.data+offset+5,n)
+  return offset+n+5,r
 end
 
 unpackers.raw16 = function(buf,offset)
