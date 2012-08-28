@@ -1,5 +1,7 @@
 #!/usr/bin/env luajit
 
+local RUN_LARGE_TESTS = false
+
 local pathx = require "pl.path"
 local pretty = require "pl.pretty"
 local tablex = require "pl.tablex"
@@ -276,10 +278,11 @@ printf(".")
 for n=65536,65536+100 do
   raw_test(rand_raw(n),5)
 end
--- below: too slow
--- for n=4294967295-100,4294967295 do
---   raw_test(rand_raw(n),5)
--- end
+if RUN_LARGE_TESTS then
+  for n=4294967295-100,4294967295 do
+    raw_test(rand_raw(n),5)
+  end
+end
 
 print(" OK")
 
