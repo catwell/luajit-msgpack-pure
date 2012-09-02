@@ -17,6 +17,9 @@ local bor,band,bxor,rshift = bit.bor,bit.band,bit.bxor,bit.rshift
 local t_buf = ffi.new("unsigned char[8]")
 local t_buf2 = ffi.new("unsigned char[8]")
 
+-- VLA ctype constructor
+local uchar_vla = ffi.typeof("unsigned char[?]")
+
 -- endianness
 
 local LITTLE_ENDIAN = ffi.abi("le")
@@ -409,14 +412,14 @@ end
 
 unpackers.buf16 = function(buf,offset)
   local n = unpack_number(buf,offset,"uint16_t *",2)
-  local r = ffi.new("unsigned char[?]",n)
+  local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+3,n)
   return offset+n+3,r
 end
 
 unpackers.buf32 = function(buf,offset)
   local n = unpack_number(buf,offset,"uint32_t *",4)
-  local r = ffi.new("unsigned char[?]",n)
+  local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+5,n)
   return offset+n+5,r
 end
