@@ -80,10 +80,24 @@ if LITTLE_ENDIAN then
     for i=x-8,0,-8 do t[#t+1] = band(rshift(n,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
+  sbuffer_append_int64 = function(self,n,h)
+    local t = {h}
+    local q,r = math.floor(n/2^32),n%(2^32)
+    for i=24,0,-8 do t[#t+1] = band(rshift(q,i),0xff) end
+    for i=24,0,-8 do t[#t+1] = band(rshift(r,i),0xff) end
+    sbuffer_append_tbl(self,t)
+  end
 else
   sbuffer_append_intx = function(self,n,x,h)
     local t = {h}
     for i=0,x-8,8 do t[#t+1] = band(rshift(n,i),0xff) end
+    sbuffer_append_tbl(self,t)
+  end
+  sbuffer_append_int64 = function(self,n,h)
+    local t = {h}
+    local q,r = math.floor(n/2^32),n%(2^32)
+    for i=0,24,8 do t[#t+1] = band(rshift(r,i),0xff) end
+    for i=0,24,8 do t[#t+1] = band(rshift(q,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
 end
@@ -164,7 +178,7 @@ packers.number = function(n)
       elseif n == math.huge then -- +inf
         packers.posinf()
       else -- uint64
-        sbuffer_append_intx(buffer,n,64,0xcf)
+        sbuffer_append_int64(buffer,n,0xcf)
       end
     else -- negative integer
       if n >= -32 then -- negative fixnum
@@ -178,7 +192,7 @@ packers.number = function(n)
       elseif n == -math.huge then -- -inf
         packers.neginf()
       else -- int64
-        sbuffer_append_intx(buffer,n,64,0xd3)
+        sbuffer_append_int64(buffer,n,0xd3)
       end
     end
   elseif n ~= n then -- nan

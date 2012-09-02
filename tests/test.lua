@@ -113,11 +113,10 @@ for n=2^32-101,2^32-1 do
   nb_test(n,5)
 end
 
-printf("x")
--- below: broken!
--- for n=2^32,2^32+100 do -- uint64
---   nb_test(n,9)
--- end
+printf(".")
+for n=2^32,2^32+100 do -- uint64
+  nb_test(n,9)
+end
 
 printf(".")
 for n=-1,-32,-1 do -- negative fixnum
@@ -143,11 +142,10 @@ for n=-2^31+100,-2^31,-1 do
   nb_test(n,5)
 end
 
-printf("x")
--- below: broken!
--- for n=-2147483649,-2147483649-100,-1 do -- int64
---   nb_test(n,9)
--- end
+printf(".")
+for n=-2^31-1,-2^31-101,-1 do -- int64
+  nb_test(n,9)
+end
 
 print(" OK")
 
@@ -288,8 +286,60 @@ end
 print(" OK")
 
 -- Table tests
-
 printf("Table tests ")
+
+local rand_array = function(len) -- of positive fixnum-s
+  local t = {}
+  for i=1,len do t[i] = math.random(0,127) end
+  return t
+end
+
+local array_test = function(t,expected_size,overhead)
+  offset,res = mp.unpack(mp.pack(t))
+  assert(offset,"decoding failed")
+  assert((offset-expected_size) == overhead,string.format(
+    "wrong overhead %d (expected %d)",
+    (offset-expected_size),overhead
+  ))
+  assert(type(res) == "table",string.format("wrong type %s",type(res)))
+  local n = #res
+  assert(n == expected_size,string.format(
+    "wrong size %d (expected %d)",
+    n,expected_size
+  ))
+  for i=0,n-1 do
+    assert(t[i] == res[i],"wrong value")
+  end
+end
+
+-- fix array
+printf(".")
+for n=0,15 do
+  array_test(rand_array(n),n,1)
+end
+
+-- array16
+printf(".")
+for n=16,16+100 do
+  array_test(rand_array(n),n,3)
+end
+for n=2^16-101,2^16-1 do
+  array_test(rand_array(n),n,3)
+end
+
+ -- array32
+printf(".")
+for n=2^16,2^16+100 do
+  array_test(rand_array(n),n,5)
+end
+if RUN_LARGE_TESTS then
+  for n=2^32-101,2^32-1 do
+    array_test(rand_array(n),n,5)
+  end
+end
+
+-- TODO maps
+
 print(" TODO")
 
 -- Floating point tests
@@ -340,11 +390,15 @@ end
 local buf_test = function(buf,expected_size,overhead)
   offset,res = mp.unpack(mp.pack(buf))
   assert(offset,"decoding failed")
+  assert((offset-expected_size) == overhead,string.format(
+    "wrong overhead %d (expected %d)",
+    (offset-expected_size),overhead
+  ))
   assert(type(res) == "cdata",string.format("wrong type %s",type(res)))
   local n = ffi.sizeof(res)
-  assert(n == (offset-overhead),string.format(
+  assert(n == expected_size,string.format(
     "wrong size %d (expected %d)",
-    n,(offset-overhead)
+    n,expected_size
   ))
   for i=0,n-1 do
     assert(buf[i] == res[i],"wrong value")
