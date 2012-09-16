@@ -11,7 +11,7 @@ manipulate data structures).
 ## Alternatives
 
  - [lua-msgpack](https://github.com/kengonakajima/lua-msgpack) (pure Lua)
- - [lua-cmsgpack](git://github.com/antirez/lua-cmsgpack.git)
+ - [lua-cmsgpack](https://github.com/antirez/lua-cmsgpack)
    (Lua-specific C implementation used in Redis)
  - [lua-msgpack-native](https://github.com/kengonakajima/lua-msgpack-native)
    (Lua-specific C implementation targeting luvit)
