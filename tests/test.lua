@@ -1,6 +1,7 @@
 #!/usr/bin/env luajit
 
 local RUN_LARGE_TESTS = false
+local IS_LUAFFI = not rawget(_G,"jit")
 
 local pathx = require "pl.path"
 local pretty = require "pl.pretty"
@@ -387,6 +388,7 @@ local rand_buf = function(len)
   return buf
 end
 
+local buf_type = IS_LUAFFI and "userdata" or "cdata"
 local buf_test = function(buf,expected_size,overhead)
   offset,res = mp.unpack(mp.pack(buf))
   assert(offset,"decoding failed")
@@ -394,7 +396,7 @@ local buf_test = function(buf,expected_size,overhead)
     "wrong overhead %d (expected %d)",
     (offset-expected_size),overhead
   ))
-  assert(type(res) == "cdata",string.format("wrong type %s",type(res)))
+  assert(type(res) == buf_type,string.format("wrong type %s",type(res)))
   local n = ffi.sizeof(res)
   assert(n == expected_size,string.format(
     "wrong size %d (expected %d)",

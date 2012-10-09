@@ -1,7 +1,7 @@
 PREFIX=/usr/local
 LMODNAME=luajit-msgpack-pure
 
-LUAJIT=luajit
+LUA=luajit
 LMODFILE=$(LMODNAME).lua
 
 ABIVER=5.1
@@ -14,10 +14,10 @@ all:
 	@echo "This is a pure module. Nothing to make :)"
 
 test:
-	$(LUAJIT) tests/test.lua
+	$(LUA) tests/test.lua
 
 bench:
-	$(LUAJIT) tests/bench.lua $(BENCH_NLOOP)
+	$(LUA) tests/bench.lua $(BENCH_NLOOP)
 
 install:
 	install -m0644 $(LMODFILE) $(INSTALL_LMOD)/$(LMODFILE)
