@@ -66,5 +66,5 @@ assert(decoded_2 ~= math.pi) -- loss of precision
 mp.set_fp_type("double") -- back to double precision
 local encoded_3 = mp.pack(my_data)
 local offset_3,decoded_3 = mp.unpack(encoded_3)
-assert((offset_3 == 9) and (decoded_1 == math.pi))
+assert((offset_3 == 9) and (decoded_3 == math.pi))
 ```
