@@ -3,7 +3,7 @@ local ok,socket = pcall(require,"socket")
 local gettime = ok and socket.gettime or os.clock
 
 if #arg ~= 1 then
-  error("invalid usage")
+  error("Usage: luajit bench.lua 1000000")
 end
 local nloop = arg[1]
 
