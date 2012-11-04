@@ -1,5 +1,6 @@
 local mp = require "luajit-msgpack-pure"
-local os = require "os"
+local ok,socket = pcall(require,"socket")
+local gettime = ok and socket.gettime or os.clock
 
 if #arg ~= 1 then
   error("invalid usage")
@@ -51,15 +52,16 @@ local datasets = {
   { "str80000", { makestr(80000) }, nloop/100 },
 }
 
+local n,st,et
 for i,v in ipairs(datasets) do
-  st = os.clock()
-  local n = v[3]
+  st,n = gettime(),v[3]
   local offset,res
+  local x = v[2]
   for j=1,n do
-    offset,res = mp.unpack( mp.pack(v[2] ) )
+    offset,res = mp.unpack(mp.pack(x))
   end
-  assert(offset)
-  et = os.clock()
+  assert(offset == #mp.pack(x))
+  et = gettime()
   printf(
     "%9s\t %f sec\t%d times/sec\n",
     v[1],(et-st),n/(et-st)
