@@ -234,6 +234,40 @@ packers.thread = function(data)
   error("unimplemented")
 end
 
+packers.array = function(data,ndata)
+  ndata = ndata or #data
+  if ndata < 16 then
+    sbuffer_append_byte(buffer,bor(0x90,ndata))
+  elseif ndata < 2^16 then
+    sbuffer_append_intx(buffer,ndata,16,0xdc)
+  elseif ndata < 2^32 then
+    sbuffer_append_intx(buffer,ndata,32,0xdd)
+  else
+    error("overflow")
+  end
+  for i=1,ndata do packers[type(data[i])](data[i]) end
+end
+
+packers.map = function(data,ndata)
+  if not ndata then
+    ndata = 0
+    for _ in pairs(data) do ndata = ndata+1 end
+  end
+  if ndata < 16 then
+    sbuffer_append_byte(buffer,bor(0x80,ndata))
+  elseif ndata < 2^16 then
+    sbuffer_append_intx(buffer,ndata,16,0xde)
+  elseif ndata < 2^32 then
+    sbuffer_append_intx(buffer,ndata,32,0xdf)
+  else
+    error("overflow")
+  end
+  for k,v in pairs(data) do
+    packers[type(k)](k)
+    packers[type(v)](v)
+  end
+end
+
 packers.table = function(data)
   local is_map,ndata,nmax = false,0,0
   for k,_ in pairs(data) do
@@ -245,31 +279,10 @@ packers.table = function(data)
   if (nmax ~= ndata) then -- there are holes
     is_map = true
   end -- else nmax == ndata == #data
-  if is_map then -- pack as map
-    if ndata < 16 then
-      sbuffer_append_byte(buffer,bor(0x80,ndata))
-    elseif ndata < 2^16 then
-      sbuffer_append_intx(buffer,ndata,16,0xde)
-    elseif ndata < 2^32 then
-      sbuffer_append_intx(buffer,ndata,32,0xdf)
-    else
-      error("overflow")
-    end
-    for k,v in pairs(data) do
-      packers[type(k)](k)
-      packers[type(v)](v)
-    end
-  else -- pack as array
-    if ndata < 16 then
-      sbuffer_append_byte(buffer,bor(0x90,ndata))
-    elseif ndata < 2^16 then
-      sbuffer_append_intx(buffer,ndata,16,0xdc)
-    elseif ndata < 2^32 then
-      sbuffer_append_intx(buffer,ndata,32,0xdd)
-    else
-      error("overflow")
-    end
-    for i=1,ndata do packers[type(data[i])](data[i]) end
+  if is_map then
+    packers.map(data,ndata)
+  else
+    packers.array(data,ndata)
   end
 end
 
