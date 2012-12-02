@@ -339,11 +339,9 @@ if RUN_LARGE_TESTS then
   end
 end
 
--- TODO maps
+print(" OK")
 
-print(" TODO")
-
--- Floating point tests
+-- TODO Map tests
 printf("Map tests ")
 print(" TODO")
 

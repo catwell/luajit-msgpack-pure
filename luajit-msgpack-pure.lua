@@ -268,7 +268,14 @@ packers.map = function(data,ndata)
   end
 end
 
-packers.table = function(data)
+local set_table_classifier = function(f)
+  packers.table = function(data)
+    local obj_type,ndata = f(data)
+    packers[obj_type](data,ndata)
+  end
+end
+
+local default_table_classifier = function(data)
   local is_map,ndata,nmax = false,0,0
   for k,_ in pairs(data) do
     if (type(k) == "number") and (k > 0) then
@@ -279,12 +286,10 @@ packers.table = function(data)
   if (nmax ~= ndata) then -- there are holes
     is_map = true
   end -- else nmax == ndata == #data
-  if is_map then
-    packers.map(data,ndata)
-  else
-    packers.array(data,ndata)
-  end
+  return (is_map and "map" or "array"),ndata
 end
+
+set_table_classifier(default_table_classifier)
 
 packers.cdata = function(data) -- msgpack-js
   local n = ffi.sizeof(data)
@@ -516,4 +521,7 @@ return {
   pack = ljp_pack,
   unpack = ljp_unpack,
   set_fp_type = set_fp_type,
+  set_table_classifier = set_table_classifier,
+  packers = packers,
+  unpackers = unpackers,
 }
