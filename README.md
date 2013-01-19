@@ -68,3 +68,6 @@ local encoded_3 = mp.pack(my_data)
 local offset_3,decoded_3 = mp.unpack(encoded_3)
 assert((offset_3 == 9) and (decoded_3 == math.pi))
 ```
+## Copyright
+
+Copyright (c) 2011-2013 Pierre Chapuis
