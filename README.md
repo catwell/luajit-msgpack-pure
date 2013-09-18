@@ -10,12 +10,18 @@ manipulate data structures).
 
 ## Alternatives
 
+If I had to pick a single MessagePack implementation, it would be [lua-MessagePack](https://github.com/fperrad/lua-MessagePack). It is pure Lua, its performance is very close to luajit-msgpack-pure and it supports the latest revision of the standard. If it had existed earlier, I would not have written this one. *If you start a new project, use it.*
+
+Another interesting implementation is [lua-cmsgpack](https://github.com/antirez/lua-cmsgpack), written in C specifically for use in Redis.
+
+Other implementations:
+
  - [lua-msgpack](https://github.com/kengonakajima/lua-msgpack) (pure Lua)
- - [lua-cmsgpack](https://github.com/antirez/lua-cmsgpack)
-   (Lua-specific C implementation used in Redis)
  - [lua-msgpack-native](https://github.com/kengonakajima/lua-msgpack-native)
    (Lua-specific C implementation targeting luvit)
  - [MPLua](https://github.com/nobu-k/mplua) (binding)
+
+Before luajit-msgpack-pure, I had written [luajit-msgpack](https://github.com/catwell/cw-lua/tree/master/luajit-msgpack), a FFI binding which is now deprecated.
 
 ## TODO
 
