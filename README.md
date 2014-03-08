@@ -76,4 +76,4 @@ assert((offset_3 == 9) and (decoded_3 == math.pi))
 ```
 ## Copyright
 
-Copyright (c) 2011-2013 Pierre Chapuis
+Copyright (c) 2011-2014 Pierre Chapuis

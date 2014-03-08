@@ -275,10 +275,11 @@ local set_table_classifier = function(f)
   end
 end
 
-local default_table_classifier = function(data)
+local table_classifier_keys = function(data)
+  -- slightly slower, does not access values at all
   local is_map,ndata,nmax = false,0,0
   for k,_ in pairs(data) do
-    if (type(k) == "number") and (k > 0) then
+    if (type(k) == "number") and (k > 0) and (math.floor(k) == k) then
       if k > nmax then nmax = k end
     else is_map = true end
     ndata = ndata+1
@@ -289,7 +290,17 @@ local default_table_classifier = function(data)
   return (is_map and "map" or "array"),ndata
 end
 
-set_table_classifier(default_table_classifier)
+local table_classifier_values = function(data)
+  -- slightly faster, accesses values
+  local is_map,ndata = false,0
+  for _ in pairs(data) do
+    ndata = ndata + 1
+    if rawget(data,ndata) == nil then is_map = true end
+  end
+  return (is_map and "map" or "array"),ndata
+end
+
+set_table_classifier(table_classifier_keys)
 
 packers.cdata = function(data) -- msgpack-js
   local n = ffi.sizeof(data)
@@ -521,6 +532,10 @@ return {
   pack = ljp_pack,
   unpack = ljp_unpack,
   set_fp_type = set_fp_type,
+  table_classifiers = {
+    keys = table_classifier_keys,
+    values = table_classifier_values,
+  },
   set_table_classifier = set_table_classifier,
   packers = packers,
   unpackers = unpackers,

@@ -41,6 +41,7 @@ local data = {
   {[-6]=17,21,27},
   {[-1]=4,1,nil,3},
   {[1]=17,[99999999]=21},
+  {[1.2]=5, [2]=7},
   {{"multi","level",{"lists","used",45,{{"trees"}}},"work",{}},"too"},
   {foo="bar",spam="eggs"},
   {nested={maps={"work","too"}}},
