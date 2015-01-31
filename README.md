@@ -3,7 +3,7 @@
 ## Presentation
 
 This is yet another implementation of MessagePack for LuaJIT.
-However, unlike [luajit-msgpack](https://github.com/catwell/luajit-msgpack),
+However, unlike [luajit-msgpack](https://github.com/catwell/cw-lua/tree/master/luajit-msgpack),
 luajit-msgpack-pure does not depend on the MessagePack C library.
 Everything is re-implemented in LuaJIT code (using the FFI but only to
 manipulate data structures).
