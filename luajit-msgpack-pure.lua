@@ -82,26 +82,40 @@ if LITTLE_ENDIAN then
     for i=x-8,0,-8 do t[#t+1] = band(rshift(n,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
-  sbuffer_append_int64 = function(self,n,h)
-    local t = {h}
-    local q,r = math.floor(n/2^32),n%(2^32)
-    for i=24,0,-8 do t[#t+1] = band(rshift(q,i),0xff) end
-    for i=24,0,-8 do t[#t+1] = band(rshift(r,i),0xff) end
-    sbuffer_append_tbl(self,t)
-  end
 else
   sbuffer_append_intx = function(self,n,x,h)
     local t = {h}
     for i=0,x-8,8 do t[#t+1] = band(rshift(n,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
-  sbuffer_append_int64 = function(self,n,h)
-    local t = {h}
-    local q,r = math.floor(n/2^32),n%(2^32)
-    for i=0,24,8 do t[#t+1] = band(rshift(r,i),0xff) end
-    for i=0,24,8 do t[#t+1] = band(rshift(q,i),0xff) end
-    sbuffer_append_tbl(self,t)
-  end
+end
+
+sbuffer_append_int64 = function(self,n)
+	local t = {}
+	t[1] = 0xd3
+	t[2] = 0xff
+	t[3] = math.floor(n / 0x1000000000000) % 0x100
+	t[4] = math.floor(n / 0x10000000000) % 0x100
+	t[5] = math.floor(n / 0x100000000) % 0x100
+	t[6] = math.floor(n / 0x1000000) % 0x100
+	t[7] = math.floor(n / 0x10000) % 0x100
+	t[8] = math.floor(n / 0x100) % 0x100
+	t[9] = n % 0x100
+	sbuffer_append_tbl(self,t)
+end
+
+sbuffer_append_uint64 = function(self,n)
+	local t = {}
+	t[1] = 0xcf
+	t[2] = 0x00
+	t[3] = math.floor(n / 0x1000000000000) % 0x100
+	t[4] = math.floor(n / 0x10000000000) % 0x100
+	t[5] = math.floor(n / 0x100000000) % 0x100
+	t[6] = math.floor(n / 0x1000000) % 0x100
+	t[7] = math.floor(n / 0x10000) % 0x100
+	t[8] = math.floor(n / 0x100) % 0x100
+	t[9] = n % 0x100
+	sbuffer_append_tbl(self,t)
 end
 
 --- packers
@@ -180,7 +194,7 @@ packers.number = function(n)
       elseif n == math.huge then -- +inf
         packers.posinf()
       else -- uint64
-        sbuffer_append_int64(buffer,n,0xcf)
+        sbuffer_append_uint64(buffer,n)
       end
     else -- negative integer
       if n >= -32 then -- negative fixnum
@@ -194,7 +208,7 @@ packers.number = function(n)
       elseif n == -math.huge then -- -inf
         packers.neginf()
       else -- int64
-        sbuffer_append_int64(buffer,n,0xd3)
+        sbuffer_append_int64(buffer,n)
       end
     end
   elseif n ~= n then -- nan
