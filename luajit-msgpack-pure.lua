@@ -383,6 +383,7 @@ local unpacker_number = function(buf,offset)
   if (obj_type == "float") or (obj_type == "double") then
     ntype = obj_type .. " *"
   else ntype = obj_type .. "_t *" end
+  if offset + nlen >= buf.size then return nil,nil end
   return offset+nlen+1,unpack_number(buf,offset,ntype,nlen)
 end
 
@@ -391,7 +392,15 @@ local unpack_map = function(buf,offset,n)
   local k,v
   for i=1,n do
     offset,k = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole map is not available in the buffer
+      return nil, r
+    end
     offset,v = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole map is not available in the buffer
+      return nil, r
+    end
     r[k] = v
   end
   return offset,r
@@ -399,11 +408,18 @@ end
 
 local unpack_array = function(buf,offset,n)
   local r = {}
-  for i=1,n do offset,r[i] = unpackers.dynamic(buf,offset) end
+  for i=1,n do
+    offset,r[i] = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole array is not available in the buffer
+      return nil, r
+    end
+  end
   return offset,r
 end
 
 unpackers.dynamic = function(buf,offset)
+  assert(offset, "non nil offset is expected")
   if offset >= buf.size then return nil,nil end
   local obj_type = type_for(buf.data[offset])
   return unpackers[obj_type](buf,offset)
@@ -430,6 +446,7 @@ unpackers.fixnum_pos = function(buf,offset)
 end
 
 unpackers.uint8 = function(buf,offset)
+  if offset + 1 >= buf.size then return nil,nil end
   return offset+2,buf.data[offset+1]
 end
 
@@ -444,6 +461,7 @@ unpackers.fixnum_neg = function(buf,offset)
 end
 
 unpackers.int8 = function(buf,offset)
+  if offset + 1 >= buf.size then return nil,nil end
   return offset+2,ffi.cast("int8_t *",buf.data+offset+1)[0]
 end
 
@@ -456,55 +474,74 @@ unpackers.double = unpacker_number
 
 unpackers.fixraw = function(buf,offset)
   local n = band(buf.data[offset],0x1f)
+  if offset + n >= buf.size then return nil,nil end
   return offset+n+1,ffi.string(buf.data+offset+1,n)
 end
 
 unpackers.buf16 = function(buf,offset)
+  if offset + 2 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint16_t *",2)
+  if offset + n + 2 >= buf.size then return nil,nil end
   local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+3,n)
   return offset+n+3,r
 end
 
 unpackers.buf32 = function(buf,offset)
+  if offset + 4 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint32_t *",4)
+  if offset + n + 4 >= buf.size then return nil,nil end
   local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+5,n)
   return offset+n+5,r
 end
 
 unpackers.raw16 = function(buf,offset)
+  if offset + 2 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint16_t *",2)
+  if offset + n + 2 >= buf.size then return nil,nil end
   return offset+n+3,ffi.string(buf.data+offset+3,n)
 end
 
 unpackers.raw32 = function(buf,offset)
+  if offset + 4 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint32_t *",4)
+  if offset + n + 4 >= buf.size then return nil,nil end
   return offset+n+5,ffi.string(buf.data+offset+5,n)
 end
 
 unpackers.fixarray = function(buf,offset)
-  return unpack_array(buf,offset+1,band(buf.data[offset],0x0f))
+  local n = band(buf.data[offset],0x0f)
+  return unpack_array(buf,offset+1,n)
 end
 
 unpackers.array16 = function(buf,offset)
-  return unpack_array(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+  if offset + 2 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  return unpack_array(buf,offset+3,n)
 end
 
 unpackers.array32 = function(buf,offset)
-  return unpack_array(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+  if offset + 4 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  return unpack_array(buf,offset+5,n)
 end
 
 unpackers.fixmap = function(buf,offset)
-  return unpack_map(buf,offset+1,band(buf.data[offset],0x0f))
+  local n = band(buf.data[offset],0x0f)
+  return unpack_map(buf,offset+1,n)
 end
 
 unpackers.map16 = function(buf,offset)
-  return unpack_map(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+  if offset + 2 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  return unpack_map(buf,offset+3,n)
 end
 
 unpackers.map32 = function(buf,offset)
-  return unpack_map(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+  if offset + 4 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  return unpack_map(buf,offset+5,n)
 end
 
 -- Main functions
