@@ -565,9 +565,30 @@ local ljp_unpack = function(s,offset)
   return offset,data
 end
 
+local ljp_pack_raw = function(data)
+  sbuffer_init(buffer)
+  packers.dynamic(data)
+  local data, size = buffer.data, buffer.size
+  buffer.data = nil
+  return data, size
+end
+
+local ljp_unpack_raw = function(ptr, size, offset)
+  if offset == nil then offset = 0 end
+  local buffer = {
+    data = ffi.cast("unsigned char *", ptr),
+    size = size
+  }
+  local data
+  offset, data = unpackers.dynamic(buffer, offset)
+  return offset, data
+end
+
 return {
   pack = ljp_pack,
   unpack = ljp_unpack,
+  pack_raw = ljp_pack_raw,
+  unpack_raw = ljp_unpack_raw,
   set_fp_type = set_fp_type,
   table_classifiers = {
     keys = table_classifier_keys,
