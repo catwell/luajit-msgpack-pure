@@ -82,26 +82,40 @@ if LITTLE_ENDIAN then
     for i=x-8,0,-8 do t[#t+1] = band(rshift(n,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
-  sbuffer_append_int64 = function(self,n,h)
-    local t = {h}
-    local q,r = math.floor(n/2^32),n%(2^32)
-    for i=24,0,-8 do t[#t+1] = band(rshift(q,i),0xff) end
-    for i=24,0,-8 do t[#t+1] = band(rshift(r,i),0xff) end
-    sbuffer_append_tbl(self,t)
-  end
 else
   sbuffer_append_intx = function(self,n,x,h)
     local t = {h}
     for i=0,x-8,8 do t[#t+1] = band(rshift(n,i),0xff) end
     sbuffer_append_tbl(self,t)
   end
-  sbuffer_append_int64 = function(self,n,h)
-    local t = {h}
-    local q,r = math.floor(n/2^32),n%(2^32)
-    for i=0,24,8 do t[#t+1] = band(rshift(r,i),0xff) end
-    for i=0,24,8 do t[#t+1] = band(rshift(q,i),0xff) end
-    sbuffer_append_tbl(self,t)
-  end
+end
+
+sbuffer_append_int64 = function(self,n)
+	local t = {}
+	t[1] = 0xd3
+	t[2] = 0xff
+	t[3] = math.floor(n / 0x1000000000000) % 0x100
+	t[4] = math.floor(n / 0x10000000000) % 0x100
+	t[5] = math.floor(n / 0x100000000) % 0x100
+	t[6] = math.floor(n / 0x1000000) % 0x100
+	t[7] = math.floor(n / 0x10000) % 0x100
+	t[8] = math.floor(n / 0x100) % 0x100
+	t[9] = n % 0x100
+	sbuffer_append_tbl(self,t)
+end
+
+sbuffer_append_uint64 = function(self,n)
+	local t = {}
+	t[1] = 0xcf
+	t[2] = 0x00
+	t[3] = math.floor(n / 0x1000000000000) % 0x100
+	t[4] = math.floor(n / 0x10000000000) % 0x100
+	t[5] = math.floor(n / 0x100000000) % 0x100
+	t[6] = math.floor(n / 0x1000000) % 0x100
+	t[7] = math.floor(n / 0x10000) % 0x100
+	t[8] = math.floor(n / 0x100) % 0x100
+	t[9] = n % 0x100
+	sbuffer_append_tbl(self,t)
 end
 
 --- packers
@@ -180,7 +194,7 @@ packers.number = function(n)
       elseif n == math.huge then -- +inf
         packers.posinf()
       else -- uint64
-        sbuffer_append_int64(buffer,n,0xcf)
+        sbuffer_append_uint64(buffer,n)
       end
     else -- negative integer
       if n >= -32 then -- negative fixnum
@@ -194,7 +208,7 @@ packers.number = function(n)
       elseif n == -math.huge then -- -inf
         packers.neginf()
       else -- int64
-        sbuffer_append_int64(buffer,n,0xd3)
+        sbuffer_append_int64(buffer,n)
       end
     end
   elseif n ~= n then -- nan
@@ -383,6 +397,7 @@ local unpacker_number = function(buf,offset)
   if (obj_type == "float") or (obj_type == "double") then
     ntype = obj_type .. " *"
   else ntype = obj_type .. "_t *" end
+  if offset + nlen >= buf.size then return nil,nil end
   return offset+nlen+1,unpack_number(buf,offset,ntype,nlen)
 end
 
@@ -391,7 +406,15 @@ local unpack_map = function(buf,offset,n)
   local k,v
   for i=1,n do
     offset,k = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole map is not available in the buffer
+      return nil, r
+    end
     offset,v = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole map is not available in the buffer
+      return nil, r
+    end
     r[k] = v
   end
   return offset,r
@@ -399,11 +422,18 @@ end
 
 local unpack_array = function(buf,offset,n)
   local r = {}
-  for i=1,n do offset,r[i] = unpackers.dynamic(buf,offset) end
+  for i=1,n do
+    offset,r[i] = unpackers.dynamic(buf,offset)
+    if not offset then
+      -- Whole array is not available in the buffer
+      return nil, r
+    end
+  end
   return offset,r
 end
 
 unpackers.dynamic = function(buf,offset)
+  assert(offset, "non nil offset is expected")
   if offset >= buf.size then return nil,nil end
   local obj_type = type_for(buf.data[offset])
   return unpackers[obj_type](buf,offset)
@@ -430,6 +460,7 @@ unpackers.fixnum_pos = function(buf,offset)
 end
 
 unpackers.uint8 = function(buf,offset)
+  if offset + 1 >= buf.size then return nil,nil end
   return offset+2,buf.data[offset+1]
 end
 
@@ -444,6 +475,7 @@ unpackers.fixnum_neg = function(buf,offset)
 end
 
 unpackers.int8 = function(buf,offset)
+  if offset + 1 >= buf.size then return nil,nil end
   return offset+2,ffi.cast("int8_t *",buf.data+offset+1)[0]
 end
 
@@ -456,55 +488,74 @@ unpackers.double = unpacker_number
 
 unpackers.fixraw = function(buf,offset)
   local n = band(buf.data[offset],0x1f)
+  if offset + n >= buf.size then return nil,nil end
   return offset+n+1,ffi.string(buf.data+offset+1,n)
 end
 
 unpackers.buf16 = function(buf,offset)
+  if offset + 2 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint16_t *",2)
+  if offset + n + 2 >= buf.size then return nil,nil end
   local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+3,n)
   return offset+n+3,r
 end
 
 unpackers.buf32 = function(buf,offset)
+  if offset + 4 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint32_t *",4)
+  if offset + n + 4 >= buf.size then return nil,nil end
   local r = uchar_vla(n)
   ffi.copy(r,buf.data+offset+5,n)
   return offset+n+5,r
 end
 
 unpackers.raw16 = function(buf,offset)
+  if offset + 2 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint16_t *",2)
+  if offset + n + 2 >= buf.size then return nil,nil end
   return offset+n+3,ffi.string(buf.data+offset+3,n)
 end
 
 unpackers.raw32 = function(buf,offset)
+  if offset + 4 >= buf.size then return nil,nil end
   local n = unpack_number(buf,offset,"uint32_t *",4)
+  if offset + n + 4 >= buf.size then return nil,nil end
   return offset+n+5,ffi.string(buf.data+offset+5,n)
 end
 
 unpackers.fixarray = function(buf,offset)
-  return unpack_array(buf,offset+1,band(buf.data[offset],0x0f))
+  local n = band(buf.data[offset],0x0f)
+  return unpack_array(buf,offset+1,n)
 end
 
 unpackers.array16 = function(buf,offset)
-  return unpack_array(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+  if offset + 2 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  return unpack_array(buf,offset+3,n)
 end
 
 unpackers.array32 = function(buf,offset)
-  return unpack_array(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+  if offset + 4 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  return unpack_array(buf,offset+5,n)
 end
 
 unpackers.fixmap = function(buf,offset)
-  return unpack_map(buf,offset+1,band(buf.data[offset],0x0f))
+  local n = band(buf.data[offset],0x0f)
+  return unpack_map(buf,offset+1,n)
 end
 
 unpackers.map16 = function(buf,offset)
-  return unpack_map(buf,offset+3,unpack_number(buf,offset,"uint16_t *",2))
+  if offset + 2 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint16_t *",2)
+  return unpack_map(buf,offset+3,n)
 end
 
 unpackers.map32 = function(buf,offset)
-  return unpack_map(buf,offset+5,unpack_number(buf,offset,"uint32_t *",4))
+  if offset + 4 >= buf.size then return nil,nil end
+  local n = unpack_number(buf,offset,"uint32_t *",4)
+  return unpack_map(buf,offset+5,n)
 end
 
 -- Main functions
@@ -528,9 +579,30 @@ local ljp_unpack = function(s,offset)
   return offset,data
 end
 
+local ljp_pack_raw = function(data)
+  sbuffer_init(buffer)
+  packers.dynamic(data)
+  local data, size = buffer.data, buffer.size
+  buffer.data = nil
+  return data, size
+end
+
+local ljp_unpack_raw = function(ptr, size, offset)
+  if offset == nil then offset = 0 end
+  local buffer = {
+    data = ffi.cast("unsigned char *", ptr),
+    size = size
+  }
+  local data
+  offset, data = unpackers.dynamic(buffer, offset)
+  return offset, data
+end
+
 return {
   pack = ljp_pack,
   unpack = ljp_unpack,
+  pack_raw = ljp_pack_raw,
+  unpack_raw = ljp_unpack_raw,
   set_fp_type = set_fp_type,
   table_classifiers = {
     keys = table_classifier_keys,
