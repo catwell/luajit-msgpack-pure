@@ -13,7 +13,7 @@ ffi.cdef[[
 ]]
 
 -- cache bitops
-local bor,band,bxor,rshift = bit.bor,bit.band,bit.bxor,bit.rshift
+local bor,band,rshift = bit.bor,bit.band,bit.rshift
 
 -- shared ffi data
 local t_buf = ffi.new("unsigned char[8]")
@@ -75,7 +75,7 @@ local sbuffer_append_tbl = function(self,t)
   self.size = self.size + len
 end
 
-local sbuffer_append_intx
+local sbuffer_append_intx, sbuffer_append_int64
 if LITTLE_ENDIAN then
   sbuffer_append_intx = function(self,n,x,h)
     local t = {h}
@@ -394,7 +394,7 @@ end
 local unpack_map = function(buf,offset,n)
   local r = {}
   local k,v
-  for i=1,n do
+  for _=1,n do
     offset,k = unpackers.dynamic(buf,offset)
     if not offset then
       -- Whole map is not available in the buffer
@@ -569,9 +569,9 @@ local ljp_unpack = function(s,offset)
   return offset,data
 end
 
-local ljp_pack_raw = function(data)
+local ljp_pack_raw = function(raw)
   sbuffer_init(buffer)
-  packers.dynamic(data)
+  packers.dynamic(raw)
   local data, size = buffer.data, buffer.size
   buffer.data = nil
   return data, size
@@ -579,12 +579,12 @@ end
 
 local ljp_unpack_raw = function(ptr, size, offset)
   if offset == nil then offset = 0 end
-  local buffer = {
+  local buf = {
     data = ffi.cast("unsigned char *", ptr),
     size = size
   }
   local data
-  offset, data = unpackers.dynamic(buffer, offset)
+  offset, data = unpackers.dynamic(buf, offset)
   return offset, data
 end
 

@@ -155,7 +155,7 @@ print(" OK")
 printf("Floating point tests ")
 
 printf(".") -- default is double
-for i=1,100 do
+for _=1,100 do
   local n = math.random()*200-100
   nb_test(n,9)
 end
@@ -163,14 +163,14 @@ end
 printf(".")
 
 mp.set_fp_type("float")
-for i=1,100 do
+for _=1,100 do
   local n = math.random()*200-100
   nb_test(n,5,1e-5)
 end
 
 printf(".")
 mp.set_fp_type("double")
-for i=1,100 do
+for _=1,100 do
   local n = math.random()*200-100
   nb_test(n,9)
 end
@@ -347,35 +347,37 @@ printf("Map tests ")
 print(" TODO")
 
 -- From MessagePack test suite
-local cases_dir = pathx.abspath(pathx.dirname(arg[0]))
-local case_files = {
-  standard = pathx.join(cases_dir,"cases.mpac"),
-  compact = pathx.join(cases_dir,"cases_compact.mpac"),
-}
-local i,f,bindata,decoded
-local ncases = #msgpack_cases
-for case_name,case_file in pairs(case_files) do
-  printf("MsgPack %s tests ",case_name)
-  f = assert(io.open(case_file,'rb'))
-  bindata = f:read("*all")
-  f:close()
-  offset,i = 0,0
-  while true do
-    i = i+1
-    printf(".")
-    offset,res = mp.unpack(bindata,offset)
-    if not offset then break end
-    if not tablex.deepcompare(res,msgpack_cases[i]) then
-      display("expected",msgpack_cases[i])
-      display("found",res)
-      assert(false,string.format("wrong value %d",i))
+do
+  local cases_dir = pathx.abspath(pathx.dirname(arg[0]))
+  local case_files = {
+    standard = pathx.join(cases_dir,"cases.mpac"),
+    compact = pathx.join(cases_dir,"cases_compact.mpac"),
+  }
+  local i,f,bindata
+  local ncases = #msgpack_cases
+  for case_name,case_file in pairs(case_files) do
+    printf("MsgPack %s tests ",case_name)
+    f = assert(io.open(case_file,'rb'))
+    bindata = f:read("*all")
+    f:close()
+    offset,i = 0,0
+    while true do
+      i = i+1
+      printf(".")
+      offset,res = mp.unpack(bindata,offset)
+      if not offset then break end
+      if not tablex.deepcompare(res,msgpack_cases[i]) then
+        display("expected",msgpack_cases[i])
+        display("found",res)
+        assert(false,string.format("wrong value %d",i))
+      end
     end
+    assert(
+      i-1 == ncases,
+      string.format("decoded %d values instead of %d",i-1,ncases)
+    )
+    print(" OK")
   end
-  assert(
-    i-1 == ncases,
-    string.format("decoded %d values instead of %d",i-1,ncases)
-  )
-  print(" OK")
 end
 
 -- msgpack-js compatibility

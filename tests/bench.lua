@@ -25,7 +25,7 @@ end
 
 local makestr = function(n)
   local out = ""
-  for i=1,n-1 do out = out .. "a" end
+  for _=1,n-1 do out = out .. "a" end
   out = out .. "b"
   return out
 end
@@ -53,12 +53,12 @@ local datasets = {
 }
 
 local n,st,et
-for i,v in ipairs(datasets) do
+for _,v in ipairs(datasets) do
   st,n = gettime(),v[3]
-  local offset,res
+  local offset
   local x = v[2]
-  for j=1,n do
-    offset,res = mp.unpack(mp.pack(x))
+  for _=1,n do
+    offset = mp.unpack(mp.pack(x))
   end
   assert(offset == #mp.pack(x))
   et = gettime()
