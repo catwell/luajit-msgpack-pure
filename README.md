@@ -1,5 +1,9 @@
 # luajit-msgpack-pure
 
+## Warning
+
+This library implements MessagePack [spec v4](https://github.com/msgpack/msgpack/blob/814275fb2760d794f9f899b0a5b85db0f80c3332/spec-old.md) with some extensions compatible with [msgpack-js](https://github.com/creationix/msgpack-js). *It does not implement [spec v5](https://github.com/msgpack/msgpack/blob/814275fb2760d794f9f899b0a5b85db0f80c3332/spec.md).* If you need support for spec v5 (including STR8, BIN types, etc), see [alternatives](#alternatives).
+
 ## Presentation
 
 This is yet another implementation of MessagePack for LuaJIT.
