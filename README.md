@@ -14,7 +14,7 @@ manipulate data structures).
 
 ## Alternatives
 
-If I had to pick a single MessagePack implementation, it would be [lua-MessagePack](https://github.com/fperrad/lua-MessagePack). It is pure Lua, its performance is very close to luajit-msgpack-pure and it supports the latest revision of the standard. If it had existed earlier, I would not have written this one. *If you start a new project, use it.*
+If I had to pick a single MessagePack implementation, it would be [lua-MessagePack](https://fperrad.frama.io/lua-MessagePack/). It is pure Lua, its performance is very close to luajit-msgpack-pure and it supports the latest revision of the standard. If it had existed earlier, I would not have written this one. *If you start a new project, use it.*
 
 Another interesting implementation is [lua-cmsgpack](https://github.com/antirez/lua-cmsgpack), written in C specifically for use in Redis.
 
@@ -80,4 +80,4 @@ assert((offset_3 == 9) and (decoded_3 == math.pi))
 ```
 ## Copyright
 
-Copyright (c) 2011-2016 Pierre Chapuis
+Copyright (c) 2011-2019 Pierre Chapuis
