@@ -116,7 +116,7 @@ packers.dynamic = function(data)
   return packers[type(data)](data)
 end
 
-packers["nil"] = function(data)
+packers["nil"] = function()
   sbuffer_append_byte(buffer,0xc0)
 end
 
@@ -223,7 +223,7 @@ packers.string = function(data)
 end
 
 packers["function"] = function(data)
-  error("unimplemented")
+  error("unimplemented", data)
 end
 
 packers.userdata = function(data)
@@ -235,7 +235,7 @@ packers.userdata = function(data)
 end
 
 packers.thread = function(data)
-  error("unimplemented")
+  error("unimplemented", data)
 end
 
 packers.array = function(data,ndata)
@@ -375,7 +375,7 @@ if LITTLE_ENDIAN then
     return tonumber(ffi.cast(ntype,t_buf)[0])
   end
 else
-  unpack_number = function(buf,offset,ntype,nlen)
+  unpack_number = function(buf,offset,ntype)
     return tonumber(ffi.cast(ntype,buf.data+offset+1)[0])
   end
 end
@@ -430,18 +430,18 @@ unpackers.dynamic = function(buf,offset)
 end
 
 unpackers.undefined = function(buf,offset)
-  error("unimplemented")
+  error("unimplemented", buf, offset)
 end
 
-unpackers["nil"] = function(buf,offset)
+unpackers["nil"] = function(_,offset)
   return offset+1,nil
 end
 
-unpackers["false"] = function(buf,offset)
+unpackers["false"] = function(_,offset)
   return offset+1,false
 end
 
-unpackers["true"] = function(buf,offset)
+unpackers["true"] = function(_,offset)
   return offset+1,true
 end
 
